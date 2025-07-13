@@ -18,7 +18,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     return content
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>')
+      .replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">$1</code>')
       .replace(/\n/g, '<br>');
   };
 
@@ -34,23 +34,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         <div className={`rounded-xl px-4 py-3 transition-all duration-300 hover:shadow-md ${
           isUser 
             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg' 
-            : 'bg-white/90 backdrop-blur-sm border border-gray-200 text-gray-900 shadow-sm'
+            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
         }`}>
           <div 
-            className="prose prose-sm max-w-none"
+            className="prose prose-sm max-w-none dark:prose-invert"
             dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
           />
           
           {message.mode && message.mode !== 'normal' && (
             <div className="mt-2 flex items-center space-x-2 animate-slideInLeft">
               <span className={`text-xs px-2 py-1 rounded-full ${
-                isUser ? 'bg-blue-500/50' : 'bg-gray-100'
+                isUser ? 'bg-blue-500/50' : 'bg-gray-100 dark:bg-gray-700'
               }`}>
                 {message.mode} mode
               </span>
               {message.model && (
                 <span className={`text-xs px-2 py-1 rounded-full ${
-                  isUser ? 'bg-blue-500/50' : 'bg-gray-100'
+                  isUser ? 'bg-blue-500/50' : 'bg-gray-100 dark:bg-gray-700'
                 }`}>
                   {message.model}
                 </span>
@@ -63,25 +63,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           <div className="flex items-center space-x-2 mt-2 animate-slideInLeft" style={{ animationDelay: '0.2s' }}>
             <button
               onClick={copyToClipboard}
-              className="p-1 text-gray-400 hover:text-blue-600 transition-all duration-200 hover:scale-110 active:scale-95 rounded-lg hover:bg-blue-50"
+              className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:scale-110 active:scale-95 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/50"
               title="Copy message"
             >
               <Copy className="w-4 h-4" />
             </button>
             <button
-              className="p-1 text-gray-400 hover:text-green-600 transition-all duration-200 hover:scale-110 active:scale-95 rounded-lg hover:bg-green-50"
+              className="p-1 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition-all duration-200 hover:scale-110 active:scale-95 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/50"
               title="Good response"
             >
               <ThumbsUp className="w-4 h-4" />
             </button>
             <button
-              className="p-1 text-gray-400 hover:text-red-600 transition-all duration-200 hover:scale-110 active:scale-95 rounded-lg hover:bg-red-50"
+              className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 hover:scale-110 active:scale-95 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/50"
               title="Bad response"
             >
               <ThumbsDown className="w-4 h-4" />
             </button>
             <button
-              className="p-1 text-gray-400 hover:text-purple-600 transition-all duration-200 hover:scale-110 active:scale-95 rounded-lg hover:bg-purple-50"
+              className="p-1 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200 hover:scale-110 active:scale-95 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/50"
               title="Regenerate response"
             >
               <RotateCcw className="w-4 h-4" />

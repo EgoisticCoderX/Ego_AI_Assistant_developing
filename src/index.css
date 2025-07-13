@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark mode base styles */
+@layer base {
+  html {
+    @apply transition-colors duration-300;
+  }
+  
+  html.dark {
+    color-scheme: dark;
+  }
+  
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300;
+  }
+}
+
 /* Custom animations and transitions */
 @keyframes fadeInUp {
   from {
@@ -129,29 +144,34 @@
   animation: shimmer 2s infinite;
 }
 
+/* Dark mode shimmer */
+.dark .animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+}
+
 /* Smooth scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  @apply bg-gray-100 dark:bg-gray-800;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  @apply bg-gray-300 dark:bg-gray-600;
   border-radius: 3px;
   transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  @apply bg-gray-400 dark:bg-gray-500;
 }
 
 /* Enhanced focus states */
 .focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all duration-200;
 }
 
 /* Gradient text */
@@ -162,11 +182,19 @@
   background-clip: text;
 }
 
+/* Dark mode gradient text */
+.dark .gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* Glass morphism */
 .glass {
-  background: rgba(255, 255, 255, 0.1);
+  @apply bg-white/10 dark:bg-gray-800/10;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  @apply border border-white/20 dark:border-gray-700/20;
 }
 
 /* Hover lift effect */
@@ -176,5 +204,56 @@
 
 .hover-lift:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  @apply shadow-xl dark:shadow-2xl;
+}
+
+/* Dark mode specific styles */
+.dark {
+  /* Custom dark mode variables */
+  --tw-gradient-from: #1f2937;
+  --tw-gradient-to: #111827;
+}
+
+/* Form inputs dark mode */
+.dark input,
+.dark textarea,
+.dark select {
+  @apply bg-gray-800 border-gray-600 text-white placeholder-gray-400;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  @apply border-blue-500 ring-blue-500;
+}
+
+/* Button dark mode */
+.dark button:not(.bg-gradient-to-r) {
+  @apply bg-gray-700 hover:bg-gray-600 text-white;
+}
+
+/* Card dark mode */
+.dark .bg-white {
+  @apply bg-gray-800;
+}
+
+.dark .border-gray-200 {
+  @apply border-gray-700;
+}
+
+.dark .text-gray-900 {
+  @apply text-gray-100;
+}
+
+.dark .text-gray-600 {
+  @apply text-gray-300;
+}
+
+.dark .text-gray-500 {
+  @apply text-gray-400;
+}
+
+/* Backdrop blur dark mode */
+.dark .backdrop-blur-xl {
+  backdrop-filter: blur(16px);
 }

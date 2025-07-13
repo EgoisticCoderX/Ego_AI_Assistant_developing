@@ -3,6 +3,7 @@ import { Send, Image, Mic, Code, Search, Brain } from 'lucide-react';
 import { useChat } from '../contexts/ChatContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
+import { aiService } from '../services/aiService';
 import MessageBubble from './MessageBubble';
 import WelcomeScreen from './WelcomeScreen';
 
@@ -12,7 +13,10 @@ const ChatInterface: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { currentSession, addMessage, createSession } = useChat();
   const { mode, setMode, selectedModel, temperature, behavior } = useSettings();
-  const { user, canUsePremium, incrementUsage } = useAuth();
+  const { user, subscription } = useAuth();
+
+  const isActiveSubscription = subscription && 
+    ['active', 'trialing'].includes(subscription.subscription_status);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,40 +48,63 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let actualModel = selectedModel;
       
-      // Check if using premium model
-      const isPremiumModel = selectedModel !== 'auto' && ['gpt-4', 'claude-3-opus', 'gemini-pro'].includes(selectedModel);
-      
-      if (isPremiumModel && user?.isPremium) {
-        incrementUsage();
+      // Auto-select model if needed
+      if (selectedModel === 'auto') {
+        actualModel = await aiService.getAutoSelectedModel(userMessage, mode);
       }
 
-      // Generate response based on mode
-      let response = '';
-      switch (mode) {
-        case 'think':
-          response = `🤔 **Thinking Mode Active**\n\nLet me analyze this step by step:\n\n1. **Understanding the question**: ${userMessage}\n2. **Considering multiple perspectives**\n3. **Analyzing potential solutions**\n\nBased on my analysis, here's my thoughtful response: This is a simulated response that would normally come from the AI model. The actual implementation would integrate with Groq, OpenRouter, A4F, and other APIs you specified.`;
-          break;
-        case 'search':
-          response = `🔍 **Web Search Mode Active**\n\nSearching the web for: "${userMessage}"\n\n**Found relevant information:**\n- This is a simulated search response\n- Would normally integrate with Tavily API\n- Real-time web information would be displayed here\n\n**Summary**: Based on current web search results, here's what I found... (This would be the actual Tavily API response)`;
-          break;
-        default:
-          response = `This is a simulated response from EGO. In the actual implementation, this would be the response from your selected AI model (${selectedModel}) via the appropriate API (Groq, OpenRouter, A4F, etc.).\n\nSettings applied:\n- Temperature: ${temperature}\n- Model: ${selectedModel}\n- Behavior: ${behavior || 'Default'}\n- Mode: ${mode}`;
+      // Check if user can use premium models
+      const modelConfig = await import('../utils/aiModels').then(m => m.getModelById(actualModel));
+      if (modelConfig?.category === 'premium' && !isActiveSubscription) {
+        throw new Error('Premium subscription required for this model. Please upgrade to continue.');
+      }
+
+      let response: string;
+      let modelUsed: string;
+
+      if (mode === 'search') {
+        const searchResult = await aiService.searchWeb(userMessage);
+        response = `🔍 **Web Search Results**\n\n${searchResult.results.map(r => 
+          `**${r.title}**\n${r.content}\n[${r.url}](${r.url})\n`
+        ).join('\n')}\n\n**Summary**: Based on the search results above, here's what I found relevant to your query.`;
+        modelUsed = searchResult.model;
+      } else if (actualModel === 'imagen-4-premium') {
+        const imageResult = await aiService.generateImage(userMessage);
+        response = `🎨 **Image Generated**\n\n![Generated Image](${imageResult.url})\n\nI've created an image based on your description: "${userMessage}"`;
+        modelUsed = imageResult.model;
+      } else {
+        // Regular chat completion
+        const messages = currentSession?.messages.map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content
+        })) || [];
+        
+        messages.push({ role: 'user', content: userMessage });
+
+        const chatResult = await aiService.chatCompletion(actualModel, messages, {
+          temperature,
+          systemPrompt: behavior,
+          mode
+        });
+        
+        response = chatResult.content;
+        modelUsed = chatResult.model;
       }
 
       addMessage({
         role: 'assistant',
         content: response,
-        model: selectedModel,
+        model: modelUsed,
         mode
       });
     } catch (error) {
+      console.error('Chat error:', error);
       addMessage({
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        model: selectedModel,
+        content: `❌ **Error**: ${error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'}`,
+        model: 'Error',
         mode
       });
     } finally {
@@ -92,15 +119,11 @@ const ChatInterface: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Main Chat Area */}
       <div className="flex-1 overflow-y-auto">
         {!currentSession || currentSession.messages.length === 0 ? (
-          <div className="flex flex-col h-full">
-            <div className="flex-shrink-0">
-              <WelcomeScreen />
-            </div>
-          </div>
+          <WelcomeScreen />
         ) : (
           <div className="max-w-4xl mx-auto p-4">
             <div className="space-y-4">
@@ -120,7 +143,7 @@ const ChatInterface: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900 p-4 transition-colors duration-300">
+      <div className="border-t border-gray-200/50 dark:border-gray-700/50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-4 transition-colors duration-300">
         <div className="max-w-4xl mx-auto">
           {/* Mode Selector */}
           <div className="flex items-center justify-center space-x-1 mb-4 animate-fadeInUp">
@@ -201,9 +224,9 @@ const ChatInterface: React.FC = () => {
           </form>
 
           {/* Usage Warning */}
-          {user?.isPremium && user.weeklyUsage >= 6 && (
-            <div className="mt-2 text-center text-sm text-amber-600 dark:text-amber-400 animate-pulse animate-fadeInUp">
-              ⚠️ You have {7 - user.weeklyUsage} premium queries remaining this week
+          {isActiveSubscription && (
+            <div className="mt-2 text-center text-sm text-green-600 dark:text-green-400 animate-fadeInUp">
+              ✨ Premium subscription active - unlimited access to all models
             </div>
           )}
         </div>

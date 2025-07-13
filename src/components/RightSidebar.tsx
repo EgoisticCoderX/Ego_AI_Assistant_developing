@@ -17,28 +17,28 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ onClose, collapsed, onToggl
   const isActiveSubscription = subscription && 
     ['active', 'trialing'].includes(subscription.subscription_status);
 
-  // Function to get icon based on model type
-  const getModelIcon = (type: string) => {
-    switch (type) {
-      case 'thinking':
-        return Brain;
-      case 'search':
-        return Search;
-      case 'image':
-        return Image;
-      case 'transcription':
-        return Mic;
-      default:
-        return MessageSquare;
-    }
-  };
-
   const allModels = [
     { id: 'auto', name: 'Auto Select', description: 'Automatically choose the best model', category: 'free', bestFor: ['Optimal performance', 'Smart selection'], icon: Zap },
-    ...AI_MODELS.filter(model => model.type === 'chat' || model.type === 'thinking').map(model => ({
-      ...model,
-      icon: getModelIcon(model.type)
-    }))
+    ...AI_MODELS.filter(model => model.type === 'chat' || model.type === 'thinking').map(model => {
+      let icon;
+      switch (model.type) {
+        case 'thinking':
+          icon = Brain;
+          break;
+        case 'search':
+          icon = Search;
+          break;
+        case 'image':
+          icon = Image;
+          break;
+        case 'transcription':
+          icon = Mic;
+          break;
+        default:
+          icon = MessageSquare;
+      }
+      return { ...model, icon };
+    })
   ];
 
   const behaviorPresets = [

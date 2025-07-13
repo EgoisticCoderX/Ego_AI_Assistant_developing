@@ -14,6 +14,8 @@ interface AuthContextType {
   user: User | null;
   subscription: Subscription | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
 }
@@ -78,6 +80,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
+  const signup = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
   const refreshSubscription = async () => {
     if (user) {
       await fetchSubscription();
@@ -92,6 +119,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     subscription,
     loading,
+    login,
+    signup,
     signOut,
     refreshSubscription,
   };
