@@ -30,13 +30,20 @@ class AIService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`API request failed (${response.status}): ${errorText}`);
+        let errorMessage = `Request failed (${response.status})`;
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       return await response.json();
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Unable to connect to AI service. Please ensure the backend is running.');
+        throw new Error('Cannot connect to AI service. Please check if the backend is running on port 3001.');
       }
       throw error;
     }

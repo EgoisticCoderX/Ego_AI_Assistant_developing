@@ -33,21 +33,21 @@ const ChatInterface: React.FC = () => {
     const userMessage = input.trim();
     setInput('');
 
-    // Create session if none exists
-    if (!currentSession) {
-      createSession();
-    }
-
-    // Add user message
-    addMessage({
-      role: 'user',
-      content: userMessage,
-      mode
-    });
-
     setIsLoading(true);
 
     try {
+      // Create session if none exists
+      if (!currentSession) {
+        createSession();
+      }
+
+      // Add user message
+      addMessage({
+        role: 'user',
+        content: userMessage,
+        mode
+      });
+
       let actualModel = selectedModel;
       
       // Auto-select model if needed
@@ -58,7 +58,13 @@ const ChatInterface: React.FC = () => {
       // Check if user can use premium models
       const modelConfig = await import('../utils/aiModels').then(m => m.getModelById(actualModel));
       if (modelConfig?.category === 'premium' && !isActiveSubscription) {
-        throw new Error('Premium subscription required for this model. Please upgrade to continue.');
+        addMessage({
+          role: 'assistant',
+          content: '❌ **Premium Required**: This model requires a premium subscription. Please upgrade to continue using advanced AI models.',
+          model: 'System',
+          mode
+        });
+        return;
       }
 
       let response: string;
@@ -103,7 +109,7 @@ const ChatInterface: React.FC = () => {
       console.error('Chat error:', error);
       addMessage({
         role: 'assistant',
-        content: `❌ **Error**: ${error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'}`,
+        content: `❌ **Error**: ${error instanceof Error ? error.message : 'Failed to get AI response. Please check your connection and try again.'}`,
         model: 'Error',
         mode
       });
