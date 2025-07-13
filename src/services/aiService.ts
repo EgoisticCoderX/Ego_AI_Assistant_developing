@@ -18,6 +18,30 @@ interface ChatResponse {
 class AIService {
   private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+  private async makeRequest(endpoint: string, options: RequestInit = {}) {
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API request failed (${response.status}): ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to AI service. Please ensure the backend is running.');
+      }
+      throw error;
+    }
+  }
+
   async chatCompletion(
     modelId: string,
     messages: ChatMessage[],
@@ -31,11 +55,8 @@ class AIService {
     const { temperature = 0.7, maxTokens = 4000, systemPrompt, mode = 'normal' } = options;
 
     try {
-      const response = await fetch(`${this.baseUrl}/api/chat`, {
+      const data = await this.makeRequest('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           messages,
           model: modelId,
@@ -45,18 +66,13 @@ class AIService {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
       return {
         content: data.content,
         model: data.model || modelId,
       };
     } catch (error) {
       console.error('AI Service Error:', error);
-      throw new Error('Failed to get AI response. Please try again.');
+      throw error;
     }
   }
 
@@ -68,11 +84,8 @@ class AIService {
     const { size = '1024x1024', quality = 'standard', style = 'natural' } = options;
 
     try {
-      const response = await fetch(`${this.baseUrl}/api/image`, {
+      const data = await this.makeRequest('/api/image', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           prompt,
           size,
@@ -81,18 +94,13 @@ class AIService {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
       return {
         url: data.url,
         model: data.model,
       };
     } catch (error) {
       console.error('Image Generation Error:', error);
-      throw new Error('Failed to generate image. Please try again.');
+      throw error;
     }
   }
 
@@ -137,11 +145,8 @@ class AIService {
     const { maxResults = 10, includeDomains, excludeDomains } = options;
 
     try {
-      const response = await fetch(`${this.baseUrl}/api/search`, {
+      const data = await this.makeRequest('/api/search', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           query,
           maxResults,
@@ -150,18 +155,13 @@ class AIService {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
       return {
         results: data.results,
         model: data.model,
       };
     } catch (error) {
       console.error('Web Search Error:', error);
-      throw new Error('Failed to search web. Please try again.');
+      throw error;
     }
   }
 
