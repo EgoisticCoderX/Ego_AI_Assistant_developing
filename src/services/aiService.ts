@@ -1,24 +1,47 @@
-import { getModelById } from '../utils/aiModels';
-
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
 interface ChatResponse {
-  content: string;
-  model: string;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
+  success: boolean;
+  data?: {
+    content: string;
+    model: string;
+    provider: string;
+    category: string;
   };
+  error?: string;
+  request_id: string;
+  timestamp: string;
+  processing_time: number;
+  model_used?: string;
+  tokens_used?: number;
+}
+
+interface SearchResponse {
+  success: boolean;
+  data?: {
+    results: Array<{
+      title: string;
+      url: string;
+      content: string;
+      score?: number;
+    }>;
+    answer: string;
+    query: string;
+    model: string;
+  };
+  error?: string;
+  request_id: string;
+  timestamp: string;
+  processing_time: number;
 }
 
 class AIService {
-  private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  private baseUrl = 'http://localhost:8000';
 
-  private async makeRequest(endpoint: string, options: RequestInit = {}) {
+  private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
@@ -28,22 +51,16 @@ class AIService {
         },
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = `Request failed (${response.status})`;
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-        throw new Error(errorMessage);
+        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      return data;
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Cannot connect to AI service. Please check if the backend is running on port 3001.');
+        throw new Error('Cannot connect to AI service. Please ensure the Python backend is running on port 8000.');
       }
       throw error;
     }
@@ -57,117 +74,64 @@ class AIService {
       maxTokens?: number;
       systemPrompt?: string;
       mode?: string;
+      userId?: string;
     } = {}
   ): Promise<ChatResponse> {
-    const { temperature = 0.7, maxTokens = 4000, systemPrompt, mode = 'normal' } = options;
+    const { temperature = 0.7, maxTokens = 4000, systemPrompt, mode = 'normal', userId } = options;
 
     try {
-      const data = await this.makeRequest('/api/chat', {
+      const response = await this.makeRequest<ChatResponse>('/chat', {
         method: 'POST',
         body: JSON.stringify({
           messages,
           model: modelId,
           temperature,
-          behavior: systemPrompt,
-          mode
+          max_tokens: maxTokens,
+          behavior: systemPrompt || '',
+          mode,
+          user_id: userId,
         }),
       });
 
-      return {
-        content: data.content,
-        model: data.model || modelId,
-      };
+      if (!response.success) {
+        throw new Error(response.error || 'Chat completion failed');
+      }
+
+      return response;
     } catch (error) {
       console.error('AI Service Error:', error);
       throw error;
     }
   }
 
-  async generateImage(prompt: string, options: {
-    size?: string;
-    quality?: string;
-    style?: string;
-  } = {}): Promise<{ url: string; model: string }> {
-    const { size = '1024x1024', quality = 'standard', style = 'natural' } = options;
-
-    try {
-      const data = await this.makeRequest('/api/image', {
-        method: 'POST',
-        body: JSON.stringify({
-          prompt,
-          size,
-          quality,
-          style,
-        }),
-      });
-
-      return {
-        url: data.url,
-        model: data.model,
-      };
-    } catch (error) {
-      console.error('Image Generation Error:', error);
-      throw error;
-    }
-  }
-
-  async transcribeAudio(audioBlob: Blob): Promise<{ text: string; model: string }> {
-    try {
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'audio.webm');
-
-      const response = await fetch(`${this.baseUrl}/api/transcribe`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return {
-        text: data.text,
-        model: data.model,
-      };
-    } catch (error) {
-      console.error('Transcription Error:', error);
-      throw new Error('Failed to transcribe audio. Please try again.');
-    }
-  }
-
-  async searchWeb(query: string, options: {
-    maxResults?: number;
-    includeDomains?: string[];
-    excludeDomains?: string[];
-  } = {}): Promise<{
-    results: Array<{
-      title: string;
-      url: string;
-      content: string;
-      score: number;
-    }>;
-    model: string;
-  }> {
+  async searchWeb(
+    query: string,
+    options: {
+      maxResults?: number;
+      includeDomains?: string[];
+      excludeDomains?: string[];
+    } = {}
+  ): Promise<SearchResponse> {
     const { maxResults = 10, includeDomains, excludeDomains } = options;
 
     try {
-      const data = await this.makeRequest('/api/search', {
+      const response = await this.makeRequest<SearchResponse>('/search', {
         method: 'POST',
         body: JSON.stringify({
           query,
-          maxResults,
-          includeDomains,
-          excludeDomains,
+          max_results: maxResults,
+          include_domains: includeDomains,
+          exclude_domains: excludeDomains,
         }),
       });
 
-      return {
-        results: data.results,
-        model: data.model,
-      };
+      if (!response.success) {
+        throw new Error(response.error || 'Web search failed');
+      }
+
+      return response;
     } catch (error) {
-      console.error('Web Search Error:', error);
+      console.error('Search Error:', error);
       throw error;
     }
   }
@@ -187,15 +151,42 @@ class AIService {
       return 'deepseek-r1-free';
     }
     
-    if (queryLower.includes('image') || queryLower.includes('picture') || queryLower.includes('draw')) {
-      return 'imagen-4-premium';
+    if (queryLower.includes('code') || queryLower.includes('program') || queryLower.includes('function')) {
+      return 'llama-4-scout-free';
     }
     
-    if (queryLower.includes('code') || queryLower.includes('program') || queryLower.includes('function')) {
-      return 'llama-3-1-405b-free';
+    if (queryLower.includes('creative') || queryLower.includes('story') || queryLower.includes('poem')) {
+      return 'qwen-3-235b-free';
     }
     
     return 'gemini-2-5-pro-free';
+  }
+
+  async getModels(): Promise<any> {
+    try {
+      return await this.makeRequest('/models');
+    } catch (error) {
+      console.error('Get Models Error:', error);
+      throw error;
+    }
+  }
+
+  async getStats(): Promise<any> {
+    try {
+      return await this.makeRequest('/stats');
+    } catch (error) {
+      console.error('Get Stats Error:', error);
+      throw error;
+    }
+  }
+
+  async healthCheck(): Promise<any> {
+    try {
+      return await this.makeRequest('/health');
+    } catch (error) {
+      console.error('Health Check Error:', error);
+      throw error;
+    }
   }
 }
 
