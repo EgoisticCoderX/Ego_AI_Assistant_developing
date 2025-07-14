@@ -89,14 +89,18 @@ const ChatInterface: React.FC = () => {
         
         messages.push({ role: 'user', content: userMessage });
 
-        const chatResult = await aiService.chatCompletion(actualModel, messages, {
+        const chatResponse = await aiService.chatCompletion(actualModel, messages, {
           temperature,
           systemPrompt: behavior,
           mode
         });
         
-        response = chatResult.content;
-        modelUsed = chatResult.model;
+        if (!chatResponse.success || !chatResponse.data) {
+          throw new Error(chatResponse.error || 'Failed to get AI response');
+        }
+        
+        response = chatResponse.data.content;
+        modelUsed = chatResponse.data.model;
       }
 
       addMessage({
@@ -109,7 +113,7 @@ const ChatInterface: React.FC = () => {
       console.error('Chat error:', error);
       addMessage({
         role: 'assistant',
-        content: `❌ **Error**: ${error instanceof Error ? error.message : 'Failed to get AI response. Please check your connection and try again.'}`,
+        content: `❌ **Error**: ${error instanceof Error ? error.message : 'Failed to get AI response. Please try again.'}`,
         model: 'Error',
         mode
       });
