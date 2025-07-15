@@ -25,12 +25,12 @@ const LoginPage: React.FC = () => {
       });
 
       if (error) {
-        setError(error.message);
+        setError(error.message || 'Authentication failed. Please check your credentials.');
       } else {
         navigate('/');
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      setError('An unexpected error occurred. Please try again or contact support if the problem persists.');
     } finally {
       setIsLoading(false);
     }
